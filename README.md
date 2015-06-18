@@ -17,7 +17,6 @@ How to implement it?
 - run smtweb
 - go to data detail page (link of output filenames)
 - select one of these templates
-- 
 
 voilá!
 
