@@ -4,8 +4,8 @@ an extension for dynamical plotting in sumatra
 
 Requirements
 ------------
-d3.min.js (https://raw.githubusercontent.com/mbostock/d3/master/d3.min.js)
-jquery-2.1.4.min.js (http://code.jquery.com/jquery-2.1.4.min.js)
+- d3.min.js (https://raw.githubusercontent.com/mbostock/d3/master/d3.min.js)
+- jquery-2.1.4.min.js (http://code.jquery.com/jquery-2.1.4.min.js)
 
 How to implement it?
 --------------------
