@@ -33,15 +33,12 @@ svg {
 <script type="text/javascript" src="/static/js/d3.min.js" charset="utf-8"></script>
 <script type="text/javascript">
 var data = [];
-{% for p in path_list %}
 // Get the data
-d3.text("/static/{{p}}", function(text) {
-    var d = d3.tsv.parseRows(text).map(function(row) {
-        return {y: parseFloat(row[0])}
+d3.text("/static/{{path}}", function(text) {
+    data = d3.tsv.parseRows(text).map(function(row) {
+        return parseFloat(row[0])
       });
-    data = data.concat(d.slice());
 });
-{% endfor %}
 
 var margin = {top: 30, right: 20, bottom: 30, left: 40}, 
     width = 960 - margin.left - margin.right, 
@@ -76,24 +73,30 @@ window.onload = function() {
         .attr("y", -10)
         .text("Distribution of values");
 
+    var x = d3.scale.linear()
+        .domain(d3.extent(data))
+        .range([0, width])
+        .nice(10);
+
     var hist = d3.layout.histogram()
-        .bins(100)
-        (data.map(function(d) {return d.y; }));
+        .bins(x.ticks(20))
+        (data);
 
     xScale.domain(d3.extent(hist, function(d) { return d.x }))
         .nice(10);
 
-    yScale.domain(d3.extent(hist, function(d) { return d.y }))
+    yScale.domain([0,d3.max(hist, function(d) { return d.y })])
+<!--    yScale.domain(d3.extent(hist, function(d) { return d.y }))-->
         .nice(10);
 
     svg.selectAll(".bar")
         .data(hist)
       .enter().append("rect")
         .attr("class", "bar")
-        .attr("x", function(d) {return xScale(d.x); })
+        .attr("x", function(d) {return xScale(d.x) + 1; })
         .attr("y", function(d) {return yScale(d.y); })
-        .attr("width", width / hist.length - 1)
-        .attr("height", function(d) { return height - yScale(d.y) -1; });
+        .attr("width", width / hist.length - 2)
+        .attr("height", function(d) { return height - yScale(d.y ) - 1; });
 
     // draw the x axis
     svg.append("g")

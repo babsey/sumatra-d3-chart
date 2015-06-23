@@ -41,18 +41,15 @@ svg {
 <body>
 <div id="chart"></div>
 
-<script type="text/javascript" src="/static/js/d3.v3.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="/static/js/d3.min.js" charset="utf-8"></script>
 <script type="text/javascript">
 var data = [];
-{% for p in path_list %}
 // Get the data
-d3.text("/static/{{p}}", function(text) {
-    var d = d3.tsv.parseRows(text).map(function(row) {
+d3.text("/static/{{path}}", function(text) {
+    data = d3.tsv.parseRows(text).map(function(row) {
         return {x: parseFloat(row[1]), y: parseInt(row[0])-1}
       });
-    data = data.concat(d.slice());
 });
-{% endfor %}
 
 var margin = {top: 30, right: 20, bottom: 30, left: 40}, 
     width = 960 - margin.left - margin.right, 

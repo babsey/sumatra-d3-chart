@@ -113,17 +113,13 @@ svg {
 <script type="text/javascript" src="/static/js/jquery-2.1.4.min.js" charset="utf-8"></script>
 <script type="text/javascript" src="/static/js/d3.min.js" charset="utf-8"></script>
 <script type="text/javascript">
-
 var data = [];
-{% for p in path_list %}
 // Get the data
-d3.text("/static/{{p}}", function(text) {
-    var d = d3.tsv.parseRows(text).map(function(row) {
+d3.text("/static/{{path}}", function(text) {
+    data = d3.tsv.parseRows(text).map(function(row) {
         return {x: parseFloat(row[1]), y: parseInt(row[0])}
       });
-    data = data.concat(d.slice());
 });
-{% endfor %}
 
 <!--var binwidth = {{ binwidth }}-->
 <!--binwidth = (binwidth === undefined) ? 25 : binwidth;-->
@@ -139,23 +135,11 @@ window.onload = function() {
       $( "#sidebar_content" ).toggle()
     });
 
-    var xScale = d3.scale.linear()
-        .range([0, width])
-        .domain(d3.extent(data, function(d) { return d.x }))
-        .nice(10);
+    var xScale = d3.scale.linear().range([0, width]).domain(d3.extent(data, function(d) { return d.x })).nice(10);
+    var yScale = d3.scale.linear().range([height, 0]);
 
-    var yScale = d3.scale.linear()
-        .range([height, 0]);
-
-    var xAxis = d3.svg.axis()
-        .scale(xScale)
-        .orient("bottom")
-        .ticks(5);
-
-    var yAxis = d3.svg.axis()
-        .scale(yScale)
-        .orient("left")
-        .ticks(5);
+    var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(5);
+    var yAxis = d3.svg.axis().scale(yScale).orient("left").ticks(5);
 
     var svg = d3.select('#chart').append('svg')
         .attr('width', width + margin.right + margin.left)
