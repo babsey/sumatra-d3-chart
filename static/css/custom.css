@@ -1,0 +1,22 @@
+nav {
+    background-color: none ;       /* http://www.w3schools.com/cssref/css_colornames.asp */
+    background-image: none !important;
+}
+
+.navbar-default .logo {
+background-image: url(/static/img/logo.png);
+}
+
+.navbar-inverse .logo {
+background-image: url(/static/img/logo_inverse.png);
+}
+
+.logo {
+background-size: 92.5px 24px;
+background-repeat: no-repeat;
+width: 92.5px;height:24px;
+}
+
+.navbar-sumatra {
+    background-color: #003300;
+}

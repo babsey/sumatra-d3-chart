@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+body {
+f   ont: 10px sans-serif;
+}
+
+.axis line, .axis path {
+    shape-rendering: crispEdges;
+    stroke: black;
+    fill: none;
+}
+
+circle {
+<!--    fill: steelblue;-->
+}
+
+circle.selected {
+    fill:lightskyblue;
+}
+
+.bar {
+<!--  fill: steelblue;-->
+  shape-rendering: crispEdges;
+}
+
+.bar:hover {
+    fill: lightskyblue;
+}
+
+.bar text {
+  fill: #fff;
+}
+
+path {
+<!--    stroke: steelblue;-->
+}
+
+.visible {
+    height: 500px
+}
+</style>
+<body>
+<div id="chart"></div>
+
+<div style="width:250px; position:absolute; right:2px; top:0; padding-top:5px" id="sidebar">
+    <div id="toggle_sidebar"><button <button style="float: right">toggle settings</button></div>
+        <div id="sidebar_content" style="height: 100%; background:white; padding:5px; display:none">
+        <p>
+            <label for="autoscale">Autoscale</label>
+            <input id="autoscale" type='checkbox' checked></input>
+        </p>
+
+        <p>
+            <label for="binwidth">Binwidth</label>
+            <select id="binwidth">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option selected value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            ms
+        </p>
+
+        <p>
+            <label for="yaxis_mode">Mode of y-axis</label>
+            <select id="yaxis_mode">
+                <option value="rate">rate</option>
+                <option selected value="spike_count">spike count</option>
+            </select>
+        </p>
+
+        <p>
+            <label for="chart_mode">Mode of chart</label>
+            <select id="chart_mode">
+                <option selected value="bars">bars</option>
+                <option value="line">line</option>
+            </select>
+        </p>
+
+        <p>
+            <label for="interpolate">Interpolation</label>
+            <select id="interpolate">
+                <option selected value="step">step</option>
+                <option value="linear">linear</option>
+                <option value="monotone">monotone</option>
+                <option value="cardinal">cardinal</option>
+                <option value="basis">basis</option>
+                <option value="bundle">bundle</option>
+            </select>
+        </p>
+
+        <p>
+            <label for="nHue" style="display: inline-block; width: 240px">
+               hue = <span id="nHue-value">…</span>
+            </label>
+            <input class="hsl" type="range" min="0" max="360" id="nHue" value="180">
+
+            <label for="nSaturation" style="display: inline-block; width: 240px">
+               saturation = <span id="nSaturation-value">…</span>
+            </label>
+            <input class="hsl" type="range" min="0" max="1" step=".01" id="nSaturation" value=0.5>
+
+            <label for="nLuminance" style="display: inline-block; width: 240px">
+                luminance = <span id="nLuminance-value">…</span>
+            </label>
+            <input class="hsl" type="range" min="0" max="1" step=".01" id="nLuminance" value=0.5>
+        </p>
+    </div>
+</div>
+
+
+<script type="text/javascript" src="/static/js/jquery-2.1.4.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="/static/js/d3.v3.min.js" charset="utf-8"></script>
+<script>
+var data = [];
+{% for p in path_list %}
+// Get the data
+d3.text("/static/{{p}}", function(text) {
+    var d = d3.tsv.parseRows(text).map(function(row) {
+        return {x: parseFloat(row[1]), y: parseInt(row[0])}
+      });
+    data = data.concat(d.slice());
+});
+{% endfor %}
+
+var margin = {top: 10, right: 20, bottom: 30, left: 50, inter: 20},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var height_top = height * 3 / 4;
+var height_bottom = height / 4;
+var binwidth = parseInt(d3.select("#binwidth").node().value);
+
+window.onload = function() {
+    $( "#toggle_sidebar button" ).click(function() {
+        $( "#sidebar" ).toggleClass("visible")
+        $( "#sidebar_content" ).toggle()
+    });
+
+    var xScale = d3.scale.linear().range([0, width]).domain(d3.extent(data, function(d) { return d.x })).nice(10);
+    var yScale_top = d3.scale.linear().range([height_top, 0]).domain(d3.extent(data, function(d) { return d.y }));
+    var yScale_bottom = d3.scale.linear().range([height, height_top+margin.inter]);
+
+    var xAxis = d3.svg.axis().scale(xScale).orient("bottom").ticks(5);
+    var yAxis_top = d3.svg.axis().scale(yScale_top).orient("left").ticks(5);
+    var yAxis_bottom = d3.svg.axis().scale(yScale_bottom).orient("left").ticks(2);
+
+    var svg = d3.select('#chart').append('svg')
+        .attr('width', width + margin.right + margin.left)
+        .attr('height', height + margin.top + margin.bottom)
+      .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+      .call(d3.behavior.zoom().x(xScale).on("zoom", zoomed));
+
+    svg.selectAll(".dot")
+        .data(data)
+      .enter().append("circle")
+        .attr("class", "dot")
+        .attr("cx", function(d) { return xScale(d.x); })
+        .attr("cy", function(d) { return yScale_top(d.y); })
+        .attr("r", 2);
+
+    var line = d3.svg.line().x(function(d) { return xScale(d.x+binwidth/2); }).y(function(d) { return yScale_bottom(d.y); }).interpolate(d3.select("#interpolate").node().value);
+        svg.append("path").attr("stroke", "blue").attr("stroke-width", 2).attr("fill", "none");
+
+    // draw y axis in top panel
+    svg.append("g")
+        .attr("class", "y top axis")
+        .call(yAxis_top);
+
+    // draw x axis in bottom panel
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+
+    // draw y axis in bottom panel
+    svg.append("g")
+        .attr("class", "y bottom axis")
+        .call(yAxis_bottom);
+
+    // put text on axes
+    svg.append("text")
+        .attr("class", "y top label")
+        .attr("text-anchor", "middle")
+        .attr("x", -height_top/2)
+        .attr("y", -(margin.left-3))
+        .attr("dy", ".75em")
+        .attr("transform", "rotate(-90)")
+        .text("Neuron ID");
+
+    svg.append("text")
+        .attr("class", "x label")
+        .attr("text-anchor", "middle")
+        .attr("x", width/2)
+        .attr("y", height + margin.bottom-3)
+        .text("Time (ms)");
+
+    svg.append("text")
+        .attr("class", "y bottom label")
+        .attr("text-anchor", "middle")
+        .attr("x", -height_top-height_bottom/2)
+        .attr("y", -(margin.left-3))
+        .attr("dy", ".75em")
+        .attr("transform", "rotate(-90)")
+        .text("Count");
+
+    update();
+    update_color();
+
+    d3.selectAll("#autoscale").on("change", update);
+    d3.selectAll("#binwidth").on("change", update);
+    d3.selectAll("#yaxis_mode").on("change", update);
+    d3.selectAll("#chart_mode").on("change", update);
+    d3.selectAll("#interpolate").on("change", update);
+    d3.selectAll(".hsl").on("input", update_color);
+
+    // update the elements
+    function update_color() {
+        var hue = d3.select('#nHue').property('value');
+        // adjust the text on the range slider
+        d3.select("#nHue-value").text(hue);
+        d3.select("#nHue").property("value", hue);
+
+        var sat = d3.select('#nSaturation').property('value');
+        // adjust the text on the range slider
+        d3.select("#nSaturation-value").text(sat);
+        d3.select("#nSaturation").property("value", sat);
+
+        var lum = d3.select('#nLuminance').property('value');
+        // adjust the text on the range slider
+        d3.select("#nLuminance-value").text(lum);
+        d3.select("#nLuminance").property("value", lum);
+
+        // change the color of bars
+        d3.selectAll('.bar').attr('fill', d3.hsl(hue,sat,lum))
+        svg.select('path').attr('stroke',d3.hsl(hue,sat,lum))
+        d3.selectAll('circle').attr('fill',d3.hsl(hue,sat,lum))
+    }
+
+    function update() {
+        binwidth = parseInt(d3.select("#binwidth").node().value);
+        var bins = d3.range(xScale.domain()[0], xScale.domain()[1]+1, binwidth)
+        var bins = d3.range(0, d3.max(data,function(d) {return d.x})+binwidth, binwidth)
+        hist = d3.layout.histogram()
+            .bins(bins)
+            (data.map(function(d) {return d.x; }));
+
+        if (d3.select("#yaxis_mode").node().value == 'rate') {
+            hist.map(function(d) {d.y = d.y / parseFloat(d3.select("#binwidth").node().value) / 100. * 1000. })
+        }
+
+        yScale_bottom.domain(d3.select('#autoscale').property('checked') ? d3.extent(hist, function(d) { return d.y; }) : [0,d3.max(hist, function(d) {return d.y})]).nice(10);
+
+        svg.selectAll(".bar").data(hist)
+          .enter().append("rect")
+            .attr("class", "bar");
+
+        svg.selectAll(".bar").data(hist)
+            .attr("height", function(d) { return height- yScale_bottom(d.y)-1; })
+            .attr("width", width / hist.length - 1 )
+            .attr("x", function(d) {return xScale(d.x) + .5})
+            .attr("y", function(d) {return yScale_bottom(d.y)})
+            .attr('fill', d3.hsl(d3.select("#nHue").property('value'),d3.select("#nSaturation").property('value'),d3.select("#nLuminance").property('value')))
+            .style('display', (d3.select("#chart_mode").node().value == 'line') ? 'none' : '')
+            .on("mouseover", function(s) {svg.selectAll("circle").data(data)
+                .filter(function(d) {return d.x > s.x && d.x < s.x + xScale.invert(width / hist.length - 1)})
+                .classed('selected',true);
+            })
+            .on("mouseout", function(d) {svg.selectAll("circle").data(data).classed('selected',false)});
+
+        svg.selectAll(".bar").data(hist).exit()
+           .remove();
+
+        line.interpolate(d3.select("#interpolate").node().value);
+        svg.select('path').attr("d", line(hist))
+            .attr('stroke', d3.hsl(d3.select("#nHue").property('value'),d3.select("#nSaturation").property('value'),d3.select("#nLuminance").property('value')))
+            .style('display', (d3.select("#chart_mode").node().value == 'line') ? '' : 'none');
+
+        d3.select(".y.bottom.axis").call(yAxis_bottom);
+        d3.select(".y.bottom.label").text((d3.select("#yaxis_mode").node().value == 'rate') ? "Rate [Hz]" : "Spike count")
+    }
+
+    function zoomed() {
+        svg.select(".x.axis").call(xAxis);
+        svg.selectAll(".dot")
+            .attr("cx", function(d) { return xScale(d.x); })
+            .attr("cy", function(d) { return yScale_top(d.y); });
+        svg.selectAll(".bar")
+            .attr("transform", "translate(" + d3.event.translate[0] + ",0)scale(" + d3.event.scale + ", 1)")
+            .on("mouseover", function(s) {svg.selectAll(".dot").data(data)
+                .filter(function(d) {return d.x > s.x && d.x < s.x + xScale.invert(width / hist.length - 1)})
+                .classed('selected',true);
+            })
+            .on("mouseout", function(d) {svg.selectAll("circle").data(data).classed('selected',false)});
+        svg.selectAll(".line").attr("transform", "translate(" + d3.event.translate[0] + ",0)scale(" + d3.event.scale + ", 1)");
+    }
+
+}
+
+</script>
+</body>
